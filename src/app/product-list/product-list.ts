@@ -1,10 +1,11 @@
 import { AsyncPipe, CommonModule, CurrencyPipe } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { map, Observable } from 'rxjs';
-import { ProductDto } from '../product-dto';
+import { Store } from '@ngrx/store';
+import { map } from 'rxjs';
+import { featureName } from '../state/product.actions';
+import { loadProductsSelector, searchNameSelector } from '../state/product.selectors';
 
 @Component({
   selector: 'app-product-list',
@@ -14,17 +15,21 @@ import { ProductDto } from '../product-dto';
 })
 export class ProductList implements OnInit {
 
-  http = inject(HttpClient);
+  store = inject(Store);
 
-  products$!: Observable<ProductDto[]>;
+  products$ = this.store.select(loadProductsSelector).pipe(
+    map(x => !!this.searchName ? x.filter(product => product.title.includes(this.searchName)) : x));
+
   searchName!: string;
 
   ngOnInit() {
-    this.searchProducts();
+    this.store.select(searchNameSelector).subscribe(x => {
+      this.searchName = x;
+      this.store.dispatch({ type: `[${featureName}] Get Product` });
+    })
   }
 
   searchProducts() {
-    this.products$ = this.http.get<ProductDto[]>('api/products').pipe(
-      map(x => !!this.searchName ? x.filter(product => product.title.includes(this.searchName)) : x));
+    this.store.dispatch({ type: `[${featureName}] Search Name`, searchName: this.searchName });
   }
 }
